@@ -8,6 +8,7 @@ import com.linkedin.venice.pubsub.api.PubSubMessageHeaders;
 import com.linkedin.venice.pubsub.api.PubSubProduceResult;
 import com.linkedin.venice.pubsub.api.PubSubProducerAdapter;
 import com.linkedin.venice.pubsub.api.PubSubProducerCallback;
+import com.linkedin.venice.pubsub.api.PubSubTopic;
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleMaps;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
@@ -53,11 +54,11 @@ public class ApacheKafkaProducerAdapter implements PubSubProducerAdapter {
    * @return the number of partitions for this topic.
    */
   @Deprecated
-  public int getNumberOfPartitions(String topic) {
+  public int getNumberOfPartitions(PubSubTopic topic) {
     ensureProducerIsNotClosed();
     // TODO: This blocks forever. Using getNumberOfPartitions with timeout parameter adds a timeout to this call but
     // other usages need to be refactored to handle the timeout exception correctly
-    return producer.partitionsFor(topic).size();
+    return producer.partitionsFor(topic.getName()).size();
   }
 
   /**

@@ -7,6 +7,7 @@ import com.linkedin.venice.pubsub.api.PubSubMessageHeaders;
 import com.linkedin.venice.pubsub.api.PubSubProduceResult;
 import com.linkedin.venice.pubsub.api.PubSubProducerAdapter;
 import com.linkedin.venice.pubsub.api.PubSubProducerCallback;
+import com.linkedin.venice.pubsub.api.PubSubTopic;
 import com.linkedin.venice.unit.kafka.InMemoryKafkaBroker;
 import com.linkedin.venice.unit.kafka.InMemoryKafkaMessage;
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
@@ -29,8 +30,8 @@ public class MockInMemoryProducerAdapter implements PubSubProducerAdapter {
   }
 
   @Override
-  public int getNumberOfPartitions(String topic) {
-    return broker.getPartitionCount(topic);
+  public int getNumberOfPartitions(PubSubTopic topic) {
+    return broker.getPartitionCount(topic.getName());
   }
 
   @Override

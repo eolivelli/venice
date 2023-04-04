@@ -6,6 +6,7 @@ import com.linkedin.venice.pubsub.api.PubSubMessageHeaders;
 import com.linkedin.venice.pubsub.api.PubSubProduceResult;
 import com.linkedin.venice.pubsub.api.PubSubProducerAdapter;
 import com.linkedin.venice.pubsub.api.PubSubProducerCallback;
+import com.linkedin.venice.pubsub.api.PubSubTopic;
 import com.linkedin.venice.stats.AbstractVeniceStats;
 import com.linkedin.venice.stats.Gauge;
 import com.linkedin.venice.stats.StatsErrorCode;
@@ -57,7 +58,7 @@ public class PubSubSharedProducerAdapter implements PubSubProducerAdapter {
   }
 
   @Override
-  public int getNumberOfPartitions(String topic) {
+  public int getNumberOfPartitions(PubSubTopic topic) {
     return producerAdapter.getNumberOfPartitions(topic);
   }
 

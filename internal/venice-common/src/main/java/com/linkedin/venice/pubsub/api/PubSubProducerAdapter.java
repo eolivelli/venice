@@ -26,10 +26,10 @@ public interface PubSubProducerAdapter {
    * The support for the following two getNumberOfPartitions APIs will be removed.
    */
   @Deprecated
-  int getNumberOfPartitions(String topic);
+  int getNumberOfPartitions(PubSubTopic topic);
 
   @Deprecated
-  default int getNumberOfPartitions(String topic, int timeout, TimeUnit timeUnit)
+  default int getNumberOfPartitions(PubSubTopic topic, int timeout, TimeUnit timeUnit)
       throws InterruptedException, ExecutionException, TimeoutException {
     Callable<Integer> task = () -> getNumberOfPartitions(topic);
     Future<Integer> future = timeOutExecutor.submit(task);
