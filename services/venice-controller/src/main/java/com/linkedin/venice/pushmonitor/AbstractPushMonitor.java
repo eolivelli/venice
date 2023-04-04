@@ -22,6 +22,7 @@ import com.linkedin.venice.meta.UncompletedPartition;
 import com.linkedin.venice.meta.UncompletedReplica;
 import com.linkedin.venice.meta.Version;
 import com.linkedin.venice.meta.VersionStatus;
+import com.linkedin.venice.pubsub.PubSubTopicRepository;
 import com.linkedin.venice.pushstatushelper.PushStatusStoreReader;
 import com.linkedin.venice.throttle.EventThrottler;
 import com.linkedin.venice.utils.HelixUtils;
@@ -75,6 +76,7 @@ public abstract class AbstractPushMonitor
   private final HelixAdminClient helixAdminClient;
   private final EventThrottler helixClientThrottler;
   private final boolean disableErrorLeaderReplica;
+  private final PubSubTopicRepository pubSubTopicRepository = new PubSubTopicRepository();
 
   public AbstractPushMonitor(
       String clusterName,
@@ -825,8 +827,8 @@ public abstract class AbstractPushMonitor
         try {
           String newStatusDetails;
           realTimeTopicSwitcher.switchToRealTimeTopic(
-              Version.composeRealTimeTopic(storeName),
-              offlinePushStatus.getKafkaTopic(),
+              pubSubTopicRepository.getTopic(Version.composeRealTimeTopic(storeName)),
+              pubSubTopicRepository.getTopic(offlinePushStatus.getKafkaTopic()),
               store,
               aggregateRealTimeSourceKafkaUrl,
               activeActiveRealTimeSourceKafkaURLs);

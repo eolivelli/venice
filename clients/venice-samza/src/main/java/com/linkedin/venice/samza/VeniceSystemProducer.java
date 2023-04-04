@@ -21,6 +21,7 @@ import com.linkedin.venice.controllerapi.VersionCreationResponse;
 import com.linkedin.venice.exceptions.VeniceException;
 import com.linkedin.venice.meta.Version;
 import com.linkedin.venice.partitioner.VenicePartitioner;
+import com.linkedin.venice.pubsub.PubSubTopicRepository;
 import com.linkedin.venice.pubsub.api.PubSubProducerCallback;
 import com.linkedin.venice.pushmonitor.ExecutionStatus;
 import com.linkedin.venice.pushmonitor.HybridStoreQuotaStatus;
@@ -114,6 +115,7 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
   private final String samzaJobId;
   private final Version.PushType pushType;
   private final Optional<SSLFactory> sslFactory;
+  private final PubSubTopicRepository pubSubTopicRepository = new PubSubTopicRepository();
   private final VeniceSystemFactory factory;
   private final Optional<String> partitioners;
   private final Time time;
@@ -347,7 +349,7 @@ public class VeniceSystemProducer implements SystemProducer, Closeable {
         new VeniceProperties(partitionerProperties));
     return constructVeniceWriter(
         veniceWriterProperties,
-        new VeniceWriterOptions.Builder(store.getKafkaTopic()).setTime(time)
+        new VeniceWriterOptions.Builder(pubSubTopicRepository.getTopic(store.getKafkaTopic())).setTime(time)
             .setPartitioner(venicePartitioner)
             .setPartitionCount(partitionCount)
             .setChunkingEnabled(isChunkingEnabled)

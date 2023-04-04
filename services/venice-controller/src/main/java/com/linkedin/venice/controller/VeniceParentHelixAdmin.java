@@ -172,6 +172,7 @@ import com.linkedin.venice.meta.VeniceUserStoreType;
 import com.linkedin.venice.meta.Version;
 import com.linkedin.venice.meta.VersionStatus;
 import com.linkedin.venice.persona.StoragePersona;
+import com.linkedin.venice.pubsub.PubSubTopicRepository;
 import com.linkedin.venice.pubsub.api.PubSubProduceResult;
 import com.linkedin.venice.pushmonitor.ExecutionStatus;
 import com.linkedin.venice.pushstatushelper.PushStatusStoreRecordDeleter;
@@ -492,7 +493,8 @@ public class VeniceParentHelixAdmin implements Admin {
        * 3. Data duplication;
        */
       return getVeniceWriterFactory().createVeniceWriter(
-          new VeniceWriterOptions.Builder(topicName).setTime(getTimer())
+          new VeniceWriterOptions.Builder(veniceHelixAdmin.getPubSubTopicRepository().getTopic(topicName))
+              .setTime(getTimer())
               .setPartitionCount(AdminTopicUtils.PARTITION_NUM_FOR_ADMIN_TOPIC)
               .build());
     });
@@ -5039,5 +5041,10 @@ public class VeniceParentHelixAdmin implements Admin {
       }
     });
     getStoreGraveyard().removeStoreFromGraveyard(clusterName, storeName);
+  }
+
+  @Override
+  public PubSubTopicRepository getPubSubTopicRepository() {
+    return getVeniceHelixAdmin().getPubSubTopicRepository();
   }
 }

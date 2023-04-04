@@ -60,6 +60,7 @@ import com.linkedin.venice.meta.Store;
 import com.linkedin.venice.meta.Version;
 import com.linkedin.venice.partitioner.DefaultVenicePartitioner;
 import com.linkedin.venice.partitioner.VenicePartitioner;
+import com.linkedin.venice.pubsub.PubSubTopicRepository;
 import com.linkedin.venice.pushmonitor.ExecutionStatus;
 import com.linkedin.venice.schema.AvroSchemaParseUtils;
 import com.linkedin.venice.security.SSLFactory;
@@ -413,6 +414,7 @@ public class VenicePushJob implements AutoCloseable {
   // Lazy state
   private final Lazy<Properties> sslProperties;
   private VeniceWriter<KafkaKey, byte[], byte[]> veniceWriter;
+  private final PubSubTopicRepository pubSubTopicRepository = new PubSubTopicRepository();
   /** TODO: refactor to use {@link Lazy} */
 
   // Mutable state
@@ -2445,7 +2447,8 @@ public class VenicePushJob implements AutoCloseable {
           topicInfo.partitionerClass,
           topicInfo.amplificationFactor,
           new VeniceProperties(partitionerProperties));
-      VeniceWriterOptions vwOptions = new VeniceWriterOptions.Builder(topicInfo.topic).setUseKafkaKeySerializer(true)
+      VeniceWriterOptions vwOptions = new VeniceWriterOptions.Builder(pubSubTopicRepository.getTopic(topicInfo.topic))
+          .setUseKafkaKeySerializer(true)
           .setPartitioner(venicePartitioner)
           .setPartitionCount(
               Version.isVersionTopic(topicInfo.topic)

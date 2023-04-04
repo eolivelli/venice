@@ -26,6 +26,7 @@ import com.linkedin.venice.meta.UncompletedPartition;
 import com.linkedin.venice.meta.VeniceUserStoreType;
 import com.linkedin.venice.meta.Version;
 import com.linkedin.venice.persona.StoragePersona;
+import com.linkedin.venice.pubsub.PubSubTopicRepository;
 import com.linkedin.venice.pushmonitor.ExecutionStatus;
 import com.linkedin.venice.pushstatushelper.PushStatusStoreRecordDeleter;
 import com.linkedin.venice.schema.GeneratedSchemaID;
@@ -889,4 +890,6 @@ public interface Admin extends AutoCloseable, Closeable {
 
   default void clearInstanceMonitor(String clusterName) {
   }
+
+  PubSubTopicRepository getPubSubTopicRepository();
 }

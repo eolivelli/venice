@@ -15,6 +15,8 @@ import com.linkedin.venice.meta.PartitionerConfig;
 import com.linkedin.venice.meta.StoreInfo;
 import com.linkedin.venice.meta.Version;
 import com.linkedin.venice.partitioner.VenicePartitioner;
+import com.linkedin.venice.pubsub.PubSubTopicRepository;
+import com.linkedin.venice.pubsub.api.PubSubTopic;
 import com.linkedin.venice.serialization.avro.AvroProtocolDefinition;
 import com.linkedin.venice.utils.PartitionUtils;
 import com.linkedin.venice.utils.VeniceProperties;
@@ -36,6 +38,7 @@ import org.apache.logging.log4j.Logger;
 
 public class DefaultPushJobHeartbeatSenderFactory implements PushJobHeartbeatSenderFactory {
   private static final Logger LOGGER = LogManager.getLogger(DefaultPushJobHeartbeatSenderFactory.class);
+  private final PubSubTopicRepository pubSubTopicRepository = new PubSubTopicRepository();
 
   @Override
   public PushJobHeartbeatSender createHeartbeatSender(
@@ -59,7 +62,7 @@ public class DefaultPushJobHeartbeatSenderFactory implements PushJobHeartbeatSen
     LOGGER.info("Got [heartbeat store: {}] Store Info: {}", heartbeatStoreName, storeInfo);
     String heartbeatKafkaTopicName = Version.composeRealTimeTopic(heartbeatStoreName);
     VeniceWriter<byte[], byte[], byte[]> veniceWriter = getVeniceWriter(
-        heartbeatKafkaTopicName,
+        pubSubTopicRepository.getTopic(heartbeatKafkaTopicName),
         partitionerConfig,
         getVeniceWriterProperties(sslProperties, kafkaUrl),
         partitionNum);
@@ -122,7 +125,7 @@ public class DefaultPushJobHeartbeatSenderFactory implements PushJobHeartbeatSen
   }
 
   protected VeniceWriter<byte[], byte[], byte[]> getVeniceWriter(
-      String heartbeatKafkaTopicName,
+      PubSubTopic heartbeatKafkaTopicName,
       PartitionerConfig partitionerConfig,
       Properties veniceWriterProperties,
       int partitionNum) {

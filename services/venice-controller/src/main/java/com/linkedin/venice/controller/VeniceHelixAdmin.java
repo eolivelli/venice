@@ -139,6 +139,8 @@ import com.linkedin.venice.participant.protocol.ParticipantMessageKey;
 import com.linkedin.venice.participant.protocol.ParticipantMessageValue;
 import com.linkedin.venice.participant.protocol.enums.ParticipantMessageType;
 import com.linkedin.venice.persona.StoragePersona;
+import com.linkedin.venice.pubsub.PubSubTopicRepository;
+import com.linkedin.venice.pubsub.api.PubSubTopic;
 import com.linkedin.venice.pushmonitor.ExecutionStatus;
 import com.linkedin.venice.pushmonitor.KillOfflinePushMessage;
 import com.linkedin.venice.pushmonitor.OfflinePushStatus;
@@ -280,6 +282,7 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
   private static final String REGION_FILTER_LIST_SEPARATOR = ",\\s*";
 
   private final VeniceControllerMultiClusterConfig multiClusterConfigs;
+  private final PubSubTopicRepository pubSubTopicRepository = new PubSubTopicRepository();
   private final String controllerClusterName;
   private final int controllerClusterReplica;
   private final String controllerName;
@@ -348,7 +351,7 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
    */
   private PropertyKey.Builder controllerClusterKeyBuilder;
 
-  private String pushJobDetailsRTTopic;
+  private PubSubTopic pushJobDetailsRTTopic;
 
   // Those variables will be initialized lazily.
   private int pushJobDetailsSchemaId = -1;
@@ -1088,7 +1091,7 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
         if (attempt > 0)
           Utils.sleep(INTERNAL_STORE_RTT_RETRY_BACKOFF_MS);
         if (getTopicManager().containsTopicAndAllPartitionsAreOnline(expectedRTTopic)) {
-          pushJobDetailsRTTopic = expectedRTTopic;
+          pushJobDetailsRTTopic = pubSubTopicRepository.getTopic(expectedRTTopic);
           LOGGER.info("Topic {} exists and is configured to receive push job details events", expectedRTTopic);
           break;
         }
@@ -1186,9 +1189,10 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
                 "Version " + versionNumber + " was not found for Store " + storeName
                     + ".  Cannot end push for version that does not exist"));
 
-    String topicToReceiveEndOfPush = version.getPushType().isStreamReprocessing()
-        ? Version.composeStreamReprocessingTopic(storeName, versionNumber)
-        : Version.composeKafkaTopic(storeName, versionNumber);
+    PubSubTopic topicToReceiveEndOfPush = pubSubTopicRepository.getTopic(
+        version.getPushType().isStreamReprocessing()
+            ? Version.composeStreamReprocessingTopic(storeName, versionNumber)
+            : Version.composeKafkaTopic(storeName, versionNumber));
 
     // write EOP message
     VeniceWriterFactory factory = getVeniceWriterFactory();
@@ -2345,7 +2349,8 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
             VeniceWriter veniceWriter = null;
             try {
               VeniceWriterOptions.Builder vwOptionsBuilder =
-                  new VeniceWriterOptions.Builder(finalVersion.kafkaTopicName()).setUseKafkaKeySerializer(true)
+                  new VeniceWriterOptions.Builder(pubSubTopicRepository.getTopic(finalVersion.kafkaTopicName()))
+                      .setUseKafkaKeySerializer(true)
                       .setPartitionCount(subPartitionCount);
               if (multiClusterConfigs.isParent() && finalVersion.isNativeReplicationEnabled()) {
                 // Produce directly into one of the child fabric
@@ -2362,7 +2367,8 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
                 // Send TS message to version topic to inform leader to switch to the stream reprocessing topic
                 veniceWriter.broadcastTopicSwitch(
                     Collections.singletonList(getKafkaBootstrapServers(isSslToKafka())),
-                    Version.composeStreamReprocessingTopic(finalVersion.getStoreName(), finalVersion.getNumber()),
+                    pubSubTopicRepository.getTopic(
+                        Version.composeStreamReprocessingTopic(finalVersion.getStoreName(), finalVersion.getNumber())),
                     -1L, // -1 indicates rewinding from the beginning of the source topic
                     new HashMap<>());
               }
@@ -3455,7 +3461,7 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
         }
         String realTimeTopic = Version.composeRealTimeTopic(store.getName());
         if (topicManager.containsTopic(realTimeTopic)
-            && topicManager.partitionsFor(realTimeTopic).size() == newPartitionCount) {
+            && topicManager.partitionsFor(pubSubTopicRepository.getTopic(realTimeTopic)).size() == newPartitionCount) {
           LOGGER.info("Allow updating store " + store.getName() + " partition count to " + newPartitionCount);
           return;
         }
@@ -5951,7 +5957,7 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
                 + VeniceSystemStoreUtils.getParticipantStoreNameForCluster(clusterName));
       }
       return getVeniceWriterFactory().createVeniceWriter(
-          new VeniceWriterOptions.Builder(topic)
+          new VeniceWriterOptions.Builder(pubSubTopicRepository.getTopic(topic))
               .setKeySerializer(new VeniceAvroKafkaSerializer(ParticipantMessageKey.getClassSchema().toString()))
               .setValueSerializer(new VeniceAvroKafkaSerializer(ParticipantMessageValue.getClassSchema().toString()))
               .build());
@@ -7544,5 +7550,10 @@ public class VeniceHelixAdmin implements Admin, StoreCleaner {
     checkControllerLeadershipFor(clusterName);
     checkKafkaTopicAndHelixResource(clusterName, storeName, true, true, true);
     storeGraveyard.removeStoreFromGraveyard(clusterName, storeName);
+  }
+
+  @Override
+  public PubSubTopicRepository getPubSubTopicRepository() {
+    return pubSubTopicRepository;
   }
 }

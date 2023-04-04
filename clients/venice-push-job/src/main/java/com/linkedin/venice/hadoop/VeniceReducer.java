@@ -19,6 +19,7 @@ import com.linkedin.venice.guid.GuidUtils;
 import com.linkedin.venice.hadoop.utils.HadoopUtils;
 import com.linkedin.venice.meta.Store;
 import com.linkedin.venice.partitioner.VenicePartitioner;
+import com.linkedin.venice.pubsub.PubSubTopicRepository;
 import com.linkedin.venice.pubsub.api.PubSubProduceResult;
 import com.linkedin.venice.pubsub.api.PubSubProducerCallback;
 import com.linkedin.venice.serialization.DefaultSerializer;
@@ -166,6 +167,8 @@ public class VeniceReducer extends AbstractMapReduceTask
   private int valueSchemaId = -1;
   private int derivedValueSchemaId = -1;
   private boolean enableWriteCompute = false;
+
+  private PubSubTopicRepository pubSubTopicRepository = new PubSubTopicRepository();
 
   private VeniceProperties props;
   private JobID mapReduceJobId;
@@ -393,7 +396,8 @@ public class VeniceReducer extends AbstractMapReduceTask
     VenicePartitioner partitioner = PartitionUtils.getVenicePartitioner(props);
 
     VeniceWriterOptions options =
-        new VeniceWriterOptions.Builder(props.getString(TOPIC_PROP)).setKeySerializer(new DefaultSerializer())
+        new VeniceWriterOptions.Builder(pubSubTopicRepository.getTopic(props.getString(TOPIC_PROP)))
+            .setKeySerializer(new DefaultSerializer())
             .setValueSerializer(new DefaultSerializer())
             .setWriteComputeSerializer(new DefaultSerializer())
             .setChunkingEnabled(chunkingEnabled)

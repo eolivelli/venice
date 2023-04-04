@@ -67,6 +67,7 @@ import com.linkedin.venice.meta.ZKStore;
 import com.linkedin.venice.offsets.OffsetRecord;
 import com.linkedin.venice.partitioner.DefaultVenicePartitioner;
 import com.linkedin.venice.partitioner.VenicePartitioner;
+import com.linkedin.venice.pubsub.PubSubTopicRepository;
 import com.linkedin.venice.pubsub.adapter.kafka.producer.ApacheKafkaProducerAdapterFactory;
 import com.linkedin.venice.pubsub.adapter.kafka.producer.SharedKafkaProducerAdapterFactory;
 import com.linkedin.venice.pubsub.consumer.PubSubConsumer;
@@ -370,8 +371,10 @@ public class TestUtils {
     } else {
       compressor = new NoopCompressor();
     }
+    PubSubTopicRepository pubSubTopicRepository = new PubSubTopicRepository();
+
     try (VeniceWriter<byte[], byte[], byte[]> writer = writerFactory.createVeniceWriter(
-        new VeniceWriterOptions.Builder(kafkaTopic).setPartitionCount(partitionCount)
+        new VeniceWriterOptions.Builder(pubSubTopicRepository.getTopic(kafkaTopic)).setPartitionCount(partitionCount)
             .setPartitioner(venicePartitioner)
             .build())) {
       writer.broadcastStartOfPush(
@@ -408,8 +411,10 @@ public class TestUtils {
       VenicePartitioner venicePartitioner,
       Stream<Map.Entry> batchData) {
 
+    PubSubTopicRepository pubSubTopicRepository = new PubSubTopicRepository();
     try (VeniceWriter<Object, Object, byte[]> writer = writerFactory.createVeniceWriter(
-        new VeniceWriterOptions.Builder(kafkaTopic).setKeySerializer(new VeniceAvroKafkaSerializer(keySchema))
+        new VeniceWriterOptions.Builder(pubSubTopicRepository.getTopic(kafkaTopic))
+            .setKeySerializer(new VeniceAvroKafkaSerializer(keySchema))
             .setValueSerializer(new VeniceAvroKafkaSerializer(valueSchema))
             .setPartitionCount(partitionCount)
             .setPartitioner(venicePartitioner)
