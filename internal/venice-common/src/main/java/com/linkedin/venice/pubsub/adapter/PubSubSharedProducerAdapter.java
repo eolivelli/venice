@@ -7,6 +7,7 @@ import com.linkedin.venice.pubsub.api.PubSubProduceResult;
 import com.linkedin.venice.pubsub.api.PubSubProducerAdapter;
 import com.linkedin.venice.pubsub.api.PubSubProducerCallback;
 import com.linkedin.venice.pubsub.api.PubSubTopic;
+import com.linkedin.venice.pubsub.api.PubSubTopicPartition;
 import com.linkedin.venice.stats.AbstractVeniceStats;
 import com.linkedin.venice.stats.Gauge;
 import com.linkedin.venice.stats.StatsErrorCode;
@@ -64,21 +65,21 @@ public class PubSubSharedProducerAdapter implements PubSubProducerAdapter {
 
   /**
    * Sends a message to a topic using internal producer adapter.
-   * @param topic - The topic to be sent to.
-   * @param key - The key of the message to be sent.
-   * @param value - The {@link KafkaMessageEnvelope}, which acts as the value.
-   * @param callback - The callback function, which will be triggered when producer sends out the message.
-   * */
+   *
+   * @param topicPartition - The topic to be sent to.
+   * @param key            - The key of the message to be sent.
+   * @param value          - The {@link KafkaMessageEnvelope}, which acts as the value.
+   * @param callback       - The callback function, which will be triggered when producer sends out the message.
+   */
   @Override
   public Future<PubSubProduceResult> sendMessage(
-      String topic,
-      Integer partition,
+      PubSubTopicPartition topicPartition,
       KafkaKey key,
       KafkaMessageEnvelope value,
       PubSubMessageHeaders headers,
       PubSubProducerCallback callback) {
     long startNs = System.nanoTime();
-    Future<PubSubProduceResult> result = producerAdapter.sendMessage(topic, partition, key, value, headers, callback);
+    Future<PubSubProduceResult> result = producerAdapter.sendMessage(topicPartition, key, value, headers, callback);
     sharedProducerStats.recordProducerSendLatency(LatencyUtils.getLatencyInMS(startNs));
     return result;
   }
@@ -94,16 +95,17 @@ public class PubSubSharedProducerAdapter implements PubSubProducerAdapter {
   }
 
   @Override
-  public void close(String topic, int closeTimeoutMs) {
+  public void close(PubSubTopic topic, int closeTimeoutMs) {
     if (sharedProducerFactory.isRunning()) {
-      sharedProducerFactory.releaseSharedProducer(topic);
+      // the producer name is the topic name
+      sharedProducerFactory.releaseSharedProducer(topic.getName());
     } else {
       LOGGER.info("Producer is already closed, can't release for topic: {}", topic);
     }
   }
 
   @Override
-  public void close(String topic, int closeTimeoutMs, boolean doFlush) {
+  public void close(PubSubTopic topic, int closeTimeoutMs, boolean doFlush) {
     if (doFlush) {
       producerAdapter.flush();
     }

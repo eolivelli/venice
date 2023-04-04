@@ -2,6 +2,7 @@ package com.linkedin.venice.pushstatushelper;
 
 import com.linkedin.venice.common.VeniceSystemStoreUtils;
 import com.linkedin.venice.meta.Version;
+import com.linkedin.venice.pubsub.PubSubTopicRepository;
 import com.linkedin.venice.schema.writecompute.WriteComputeSchemaConverter;
 import com.linkedin.venice.serialization.avro.AvroProtocolDefinition;
 import com.linkedin.venice.serialization.avro.VeniceAvroKafkaSerializer;
@@ -24,6 +25,7 @@ public class PushStatusStoreVeniceWriterCache implements AutoCloseable {
   private final VeniceWriterFactory writerFactory;
   // Local cache of VeniceWriters.
   private final Map<String, VeniceWriter> veniceWriters = new VeniceConcurrentHashMap<>();
+  private final PubSubTopicRepository pubSubTopicRepository = new PubSubTopicRepository();
 
   // writerFactory Used for instantiating VeniceWriter
   public PushStatusStoreVeniceWriterCache(VeniceWriterFactory writerFactory) {
@@ -35,7 +37,7 @@ public class PushStatusStoreVeniceWriterCache implements AutoCloseable {
       String rtTopic = Version.composeRealTimeTopic(VeniceSystemStoreUtils.getDaVinciPushStatusStoreName(storeName));
       Schema valueSchema = AvroProtocolDefinition.PUSH_STATUS_SYSTEM_SCHEMA_STORE.getCurrentProtocolVersionSchema();
       Schema writeComputeSchema = WriteComputeSchemaConverter.getInstance().convertFromValueRecordSchema(valueSchema);
-      VeniceWriterOptions options = new VeniceWriterOptions.Builder(rtTopic)
+      VeniceWriterOptions options = new VeniceWriterOptions.Builder(pubSubTopicRepository.getTopic(rtTopic))
           .setKeySerializer(
               new VeniceAvroKafkaSerializer(
                   AvroProtocolDefinition.PUSH_STATUS_SYSTEM_SCHEMA_STORE_KEY.getCurrentProtocolVersionSchema()))

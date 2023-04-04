@@ -234,7 +234,7 @@ public class LeaderFollowerStoreIngestionTask extends StoreIngestionTask {
      * different in some test cases which reuse the same VeniceWriter.
      */
     VeniceWriterOptions writerOptions =
-        new VeniceWriterOptions.Builder(getVersionTopic().getName()).setPartitioner(venicePartitioner)
+        new VeniceWriterOptions.Builder(getVersionTopic()).setPartitioner(venicePartitioner)
             .setChunkingEnabled(isChunked)
             .setRmdChunkingEnabled(version.isRmdChunkingEnabled())
             .setPartitionCount(storeVersionPartitionCount * amplificationFactor)

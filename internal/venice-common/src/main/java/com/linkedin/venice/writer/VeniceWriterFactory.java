@@ -40,6 +40,9 @@ public class VeniceWriterFactory {
     return new VeniceWriter<>(
         options,
         props,
-        producerAdapterFactory.create(props, options.getTopicName(), options.getBrokerAddress()));
+        producerAdapterFactory.create(
+            props,
+            options.getTopicName().getName(), // dummy producer name
+            options.getBrokerAddress()));
   }
 }

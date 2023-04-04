@@ -23,6 +23,7 @@ import com.linkedin.venice.exceptions.TopicAuthorizationVeniceException;
 import com.linkedin.venice.exceptions.VeniceException;
 import com.linkedin.venice.meta.Store;
 import com.linkedin.venice.partitioner.DefaultVenicePartitioner;
+import com.linkedin.venice.pubsub.PubSubTopicRepository;
 import com.linkedin.venice.pubsub.adapter.SimplePubSubProduceResultImpl;
 import com.linkedin.venice.pubsub.api.PubSubProduceResult;
 import com.linkedin.venice.pubsub.api.PubSubProducerCallback;
@@ -440,7 +441,8 @@ public class TestVeniceReducer extends AbstractTestVeniceMR {
 
   @Test
   public void testReduceWithWriterException() {
-    AbstractVeniceWriter exceptionWriter = new AbstractVeniceWriter(TOPIC_NAME) {
+    PubSubTopicRepository pubSubTopicRepository = new PubSubTopicRepository();
+    AbstractVeniceWriter exceptionWriter = new AbstractVeniceWriter(pubSubTopicRepository.getTopic(TOPIC_NAME)) {
       @Override
       public void close(boolean gracefulClose) {
         // no-op
@@ -518,7 +520,8 @@ public class TestVeniceReducer extends AbstractTestVeniceMR {
 
   @Test
   public void testClosingReducerWithWriterException() throws IOException {
-    AbstractVeniceWriter exceptionWriter = new AbstractVeniceWriter(TOPIC_NAME) {
+    PubSubTopicRepository pubSubTopicRepository = new PubSubTopicRepository();
+    AbstractVeniceWriter exceptionWriter = new AbstractVeniceWriter(pubSubTopicRepository.getTopic(TOPIC_NAME)) {
       @Override
       public Future<PubSubProduceResult> put(
           Object key,

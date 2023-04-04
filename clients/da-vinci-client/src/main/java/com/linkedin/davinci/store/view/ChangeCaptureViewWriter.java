@@ -15,6 +15,7 @@ import com.linkedin.venice.meta.PartitionerConfig;
 import com.linkedin.venice.meta.Store;
 import com.linkedin.venice.meta.Version;
 import com.linkedin.venice.partitioner.VenicePartitioner;
+import com.linkedin.venice.pubsub.PubSubTopicRepository;
 import com.linkedin.venice.schema.rmd.RmdUtils;
 import com.linkedin.venice.serialization.VeniceKafkaSerializer;
 import com.linkedin.venice.serialization.avro.VeniceAvroKafkaSerializer;
@@ -42,6 +43,8 @@ public class ChangeCaptureViewWriter extends VeniceViewWriter {
   final private ChangeCaptureView internalView;
   private VeniceWriter veniceWriter;
   private final Object2IntMap<String> kafkaClusterUrlToIdMap;
+
+  private final PubSubTopicRepository pubSubTopicRepository = new PubSubTopicRepository();
 
   private final int maxColoIdValue;
 
@@ -169,7 +172,9 @@ public class ChangeCaptureViewWriter extends VeniceViewWriter {
     String changeCaptureTopicName = this.getTopicNamesAndConfigsForVersion(version).keySet().stream().findAny().get();
 
     // Build key/value Serializers for the kafka producer
-    VeniceWriterOptions.Builder configBuilder = new VeniceWriterOptions.Builder(changeCaptureTopicName);
+
+    VeniceWriterOptions.Builder configBuilder =
+        new VeniceWriterOptions.Builder(pubSubTopicRepository.getTopic(changeCaptureTopicName));
     VeniceKafkaSerializer valueSerializer = new VeniceAvroKafkaSerializer(RecordChangeEvent.getClassSchema());
     configBuilder.setValueSerializer(valueSerializer);
 

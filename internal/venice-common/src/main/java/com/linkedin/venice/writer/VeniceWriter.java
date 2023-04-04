@@ -32,10 +32,12 @@ import com.linkedin.venice.kafka.validation.checksum.CheckSumType;
 import com.linkedin.venice.message.KafkaKey;
 import com.linkedin.venice.meta.Version;
 import com.linkedin.venice.partitioner.VenicePartitioner;
+import com.linkedin.venice.pubsub.PubSubTopicPartitionImpl;
 import com.linkedin.venice.pubsub.api.PubSubMessageHeaders;
 import com.linkedin.venice.pubsub.api.PubSubProduceResult;
 import com.linkedin.venice.pubsub.api.PubSubProducerAdapter;
 import com.linkedin.venice.pubsub.api.PubSubProducerCallback;
+import com.linkedin.venice.pubsub.api.PubSubTopic;
 import com.linkedin.venice.pubsub.kafka.KafkaPubSubMessageDeserializer;
 import com.linkedin.venice.serialization.KeyWithChunkingSuffixSerializer;
 import com.linkedin.venice.serialization.VeniceKafkaSerializer;
@@ -285,7 +287,7 @@ public class VeniceWriter<K, V, U> extends AbstractVeniceWriter<K, V, U> {
         throw new VeniceException(
             MAX_SIZE_FOR_USER_PAYLOAD_PER_MESSAGE_IN_BYTES + " cannot be set higher than "
                 + DEFAULT_MAX_SIZE_FOR_USER_PAYLOAD_PER_MESSAGE_IN_BYTES + " unless " + ENABLE_CHUNKING + " is true");
-      } else if (isChunkingEnabled && !Version.isVersionTopic(topicName)) {
+      } else if (isChunkingEnabled && !Version.isVersionTopic(topicName.getName())) {
         throw new VeniceException(
             MAX_SIZE_FOR_USER_PAYLOAD_PER_MESSAGE_IN_BYTES + " cannot be set higher than "
                 + DEFAULT_MAX_SIZE_FOR_USER_PAYLOAD_PER_MESSAGE_IN_BYTES + " unless " + ENABLE_CHUNKING
@@ -402,7 +404,7 @@ public class VeniceWriter<K, V, U> extends AbstractVeniceWriter<K, V, U> {
    * @return the Kafka topic name that this {@link VeniceWriter} instance writes into.
    */
   @Override
-  public String getTopicName() {
+  public PubSubTopic getTopicName() {
     return topicName;
   }
 
@@ -527,7 +529,7 @@ public class VeniceWriter<K, V, U> extends AbstractVeniceWriter<K, V, U> {
       LeaderMetadataWrapper leaderMetadataWrapper,
       long logicalTs,
       DeleteMetadata deleteMetadata) {
-    byte[] serializedKey = keySerializer.serialize(topicName, key);
+    byte[] serializedKey = keySerializer.serialize(topicName.getName(), key);
     int partition = getPartition(serializedKey);
 
     isChunkingFlagInvoked = true;
@@ -669,8 +671,8 @@ public class VeniceWriter<K, V, U> extends AbstractVeniceWriter<K, V, U> {
       LeaderMetadataWrapper leaderMetadataWrapper,
       long logicalTs,
       PutMetadata putMetadata) {
-    byte[] serializedKey = keySerializer.serialize(topicName, key);
-    byte[] serializedValue = valueSerializer.serialize(topicName, value);
+    byte[] serializedKey = keySerializer.serialize(topicNameForSerializer, key);
+    byte[] serializedValue = valueSerializer.serialize(topicNameForSerializer, value);
     int partition = getPartition(serializedKey);
 
     int replicationMetadataPayloadSize = putMetadata == null ? 0 : putMetadata.getSerializedSize();
@@ -811,8 +813,8 @@ public class VeniceWriter<K, V, U> extends AbstractVeniceWriter<K, V, U> {
     if (isChunkingEnabled) {
       throw new VeniceException("Chunking is not supported for update operation in VeniceWriter");
     }
-    byte[] serializedKey = keySerializer.serialize(topicName, key);
-    byte[] serializedUpdate = writeComputeSerializer.serialize(topicName, update);
+    byte[] serializedKey = keySerializer.serialize(topicNameForSerializer, key);
+    byte[] serializedUpdate = writeComputeSerializer.serialize(topicNameForSerializer, update);
     int partition = getPartition(serializedKey);
 
     // large value is not supported for "update" yet
@@ -919,16 +921,16 @@ public class VeniceWriter<K, V, U> extends AbstractVeniceWriter<K, V, U> {
 
   public void broadcastTopicSwitch(
       @Nonnull List<CharSequence> sourceKafkaCluster,
-      @Nonnull String sourceTopicName,
+      @Nonnull PubSubTopic sourceTopicName,
       @Nonnull Long rewindStartTimestamp,
       Map<String, String> debugInfo) {
     Validate.notNull(sourceKafkaCluster);
-    Validate.notEmpty(sourceTopicName);
+    Validate.notEmpty(sourceTopicName.getName());
     Validate.notNull(rewindStartTimestamp);
     ControlMessage controlMessage = getEmptyControlMessage(ControlMessageType.TOPIC_SWITCH);
     TopicSwitch topicSwitch = new TopicSwitch();
     topicSwitch.sourceKafkaServers = sourceKafkaCluster;
-    topicSwitch.sourceTopicName = sourceTopicName;
+    topicSwitch.sourceTopicName = sourceTopicName.getName();
     topicSwitch.rewindStartTimestamp = rewindStartTimestamp;
     controlMessage.controlMessageUnion = topicSwitch;
     broadcastControlMessage(controlMessage, debugInfo);
@@ -1121,8 +1123,7 @@ public class VeniceWriter<K, V, U> extends AbstractVeniceWriter<K, V, U> {
       }
       try {
         return producerAdapter.sendMessage(
-            topicName,
-            partition,
+            new PubSubTopicPartitionImpl(topicName, partition),
             key,
             kafkaValue,
             getHeaders(kafkaValue.getProducerMetadata()),

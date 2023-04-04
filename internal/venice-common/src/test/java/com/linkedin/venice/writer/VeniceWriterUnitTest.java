@@ -25,7 +25,7 @@ public class VeniceWriterUnitTest {
   public void testTargetPartitionIsSameForAllOperationsWithTheSameKey(boolean isChunkingEnabled, int partitionCount) {
     PubSubProducerAdapter mockedProducer = mock(PubSubProducerAdapter.class);
     Future mockedFuture = mock(Future.class);
-    when(mockedProducer.sendMessage(any(), any(), any(), any(), any(), any())).thenReturn(mockedFuture);
+    when(mockedProducer.sendMessage(any(), any(), any(), any(), any())).thenReturn(mockedFuture);
 
     String stringSchema = "\"string\"";
     VeniceKafkaSerializer serializer = new VeniceAvroKafkaSerializer(stringSchema);
@@ -45,18 +45,15 @@ public class VeniceWriterUnitTest {
 
     ArgumentCaptor<Integer> putPartitionArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
     writer.put(key, valueString, 1, null);
-    verify(mockedProducer, atLeast(2))
-        .sendMessage(anyString(), putPartitionArgumentCaptor.capture(), any(), any(), any(), any());
+    verify(mockedProducer, atLeast(2)).sendMessage(anyString(), any(), any(), any(), any());
 
     ArgumentCaptor<Integer> deletePartitionArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
     writer.delete(key, null);
-    verify(mockedProducer, atLeast(2))
-        .sendMessage(anyString(), deletePartitionArgumentCaptor.capture(), any(), any(), any(), any());
+    verify(mockedProducer, atLeast(2)).sendMessage(anyString(), any(), any(), any(), any());
 
     ArgumentCaptor<Integer> updatePartitionArgumentCaptor = ArgumentCaptor.forClass(Integer.class);
     writer.delete(key, null);
-    verify(mockedProducer, atLeast(2))
-        .sendMessage(anyString(), updatePartitionArgumentCaptor.capture(), any(), any(), any(), any());
+    verify(mockedProducer, atLeast(2)).sendMessage(anyString(), any(), any(), any(), any());
 
     Assert.assertEquals(putPartitionArgumentCaptor.getValue(), deletePartitionArgumentCaptor.getValue());
     Assert.assertEquals(putPartitionArgumentCaptor.getValue(), updatePartitionArgumentCaptor.getValue());

@@ -467,7 +467,10 @@ public abstract class StoreIngestionTaskTest {
     setDefaultStoreVersionStateSupplier();
   }
 
-  private VeniceWriter getVeniceWriter(String topic, PubSubProducerAdapter producerAdapter, int amplificationFactor) {
+  private VeniceWriter getVeniceWriter(
+      PubSubTopic topic,
+      PubSubProducerAdapter producerAdapter,
+      int amplificationFactor) {
     VeniceWriterOptions veniceWriterOptions =
         new VeniceWriterOptions.Builder(topic).setKeySerializer(new DefaultSerializer())
             .setValueSerializer(new DefaultSerializer())
@@ -491,7 +494,7 @@ public abstract class StoreIngestionTaskTest {
 
   private VeniceWriter getVeniceWriter(PubSubProducerAdapter producerAdapter) {
     VeniceWriterOptions veniceWriterOptions =
-        new VeniceWriterOptions.Builder(topic).setKeySerializer(new DefaultSerializer())
+        new VeniceWriterOptions.Builder(pubSubTopic).setKeySerializer(new DefaultSerializer())
             .setValueSerializer(new DefaultSerializer())
             .setWriteComputeSerializer(new DefaultSerializer())
             .setPartitioner(new SimplePartitioner())
@@ -505,9 +508,11 @@ public abstract class StoreIngestionTaskTest {
         new CorruptedKafkaProducerAdapter(new MockInMemoryProducerAdapter(kafkaBroker), topic, valueToCorrupt));
   }
 
+  static private final PubSubTopicRepository publisherTopicRepository = new PubSubTopicRepository();
+
   static class CorruptedKafkaProducerAdapter extends TransformingProducerAdapter {
     public CorruptedKafkaProducerAdapter(PubSubProducerAdapter baseProducer, String topic, byte[] valueToCorrupt) {
-      super(baseProducer, (topicName, key, value, partition) -> {
+      super(baseProducer, (topicName, key, value) -> {
         KafkaMessageEnvelope transformedMessageEnvelope = value;
 
         if (MessageType.valueOf(transformedMessageEnvelope) == MessageType.PUT) {
@@ -517,8 +522,7 @@ public abstract class StoreIngestionTaskTest {
             transformedMessageEnvelope.payloadUnion = put;
           }
         }
-
-        return new TransformingProducerAdapter.SendMessageParameters(topic, key, transformedMessageEnvelope, partition);
+        return new TransformingProducerAdapter.SendMessageParameters(topicName, key, transformedMessageEnvelope);
       });
     }
   }
@@ -1134,9 +1138,9 @@ public abstract class StoreIngestionTaskTest {
     doReturn(schemaEntry).when(mockSchemaRepo).getSupersetOrLatestValueSchema(storeNameWithoutVersionInfo);
 
     VeniceWriter vtWriter =
-        getVeniceWriter(topic, new MockInMemoryProducerAdapter(inMemoryLocalKafkaBroker), amplificationFactor);
+        getVeniceWriter(pubSubTopic, new MockInMemoryProducerAdapter(inMemoryLocalKafkaBroker), amplificationFactor);
     VeniceWriter rtWriter = getVeniceWriter(
-        Version.composeRealTimeTopic(storeNameWithoutVersionInfo),
+        publisherTopicRepository.getTopic(Version.composeRealTimeTopic(storeNameWithoutVersionInfo)),
         new MockInMemoryProducerAdapter(inMemoryLocalKafkaBroker),
         1);
     HybridStoreConfig hybridStoreConfig = new HybridStoreConfigImpl(
@@ -1590,10 +1594,10 @@ public abstract class StoreIngestionTaskTest {
     localVeniceWriter = getVeniceWriter(
         new TransformingProducerAdapter(
             new MockInMemoryProducerAdapter(inMemoryLocalKafkaBroker),
-            (topicName, key, value, partition) -> {
+            (topicName, key, value) -> {
               KafkaMessageEnvelope transformedMessageEnvelope = value;
 
-              switch (partition) {
+              switch (topicName.getPartitionNumber()) {
                 case PARTITION_FOO:
                   transformedMessageEnvelope.messageType = badMessageTypeId;
                   break;
@@ -1611,11 +1615,7 @@ public abstract class StoreIngestionTaskTest {
                   break;
               }
 
-              return new TransformingProducerAdapter.SendMessageParameters(
-                  topic,
-                  key,
-                  transformedMessageEnvelope,
-                  partition);
+              return new TransformingProducerAdapter.SendMessageParameters(topicName, key, transformedMessageEnvelope);
             }));
     localVeniceWriter.broadcastStartOfPush(new HashMap<>());
     localVeniceWriter.put(putKeyFoo, putValue, SCHEMA_ID);
@@ -2579,9 +2579,10 @@ public abstract class StoreIngestionTaskTest {
         fooRtPartition,
         0);
 
-    VeniceWriter localRtWriter = getVeniceWriter(rtTopic, new MockInMemoryProducerAdapter(inMemoryLocalKafkaBroker), 1);
+    VeniceWriter localRtWriter =
+        getVeniceWriter(rtPubSubTopic, new MockInMemoryProducerAdapter(inMemoryLocalKafkaBroker), 1);
     VeniceWriter remoteRtWriter =
-        getVeniceWriter(rtTopic, new MockInMemoryProducerAdapter(inMemoryRemoteKafkaBroker), 1);
+        getVeniceWriter(rtPubSubTopic, new MockInMemoryProducerAdapter(inMemoryRemoteKafkaBroker), 1);
 
     long recordsNum = 5L;
     for (int i = 0; i < recordsNum; i++) {

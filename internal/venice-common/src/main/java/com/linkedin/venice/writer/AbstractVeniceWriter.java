@@ -1,7 +1,9 @@
 package com.linkedin.venice.writer;
 
+import com.linkedin.venice.pubsub.PubSubTopicRepository;
 import com.linkedin.venice.pubsub.api.PubSubProduceResult;
 import com.linkedin.venice.pubsub.api.PubSubProducerCallback;
+import com.linkedin.venice.pubsub.api.PubSubTopic;
 import java.io.Closeable;
 import java.io.IOException;
 import java.util.concurrent.Future;
@@ -15,13 +17,16 @@ import java.util.concurrent.Future;
  * // @see MockVeniceWriter in the VPJ tests (commented because this module does not depend on VPJ)
  */
 public abstract class AbstractVeniceWriter<K, V, U> implements Closeable {
-  protected final String topicName;
+  protected final PubSubTopic topicName;
+  protected final String topicNameForSerializer;
+  private PubSubTopicRepository pubSubTopicRepository = new PubSubTopicRepository();
 
-  public AbstractVeniceWriter(String topicName) {
+  public AbstractVeniceWriter(PubSubTopic topicName) {
     this.topicName = topicName;
+    this.topicNameForSerializer = topicName.getName();
   }
 
-  public String getTopicName() {
+  public PubSubTopic getTopicName() {
     return this.topicName;
   }
 

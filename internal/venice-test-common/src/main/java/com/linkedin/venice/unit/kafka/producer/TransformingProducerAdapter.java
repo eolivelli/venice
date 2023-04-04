@@ -7,6 +7,7 @@ import com.linkedin.venice.pubsub.api.PubSubProduceResult;
 import com.linkedin.venice.pubsub.api.PubSubProducerAdapter;
 import com.linkedin.venice.pubsub.api.PubSubProducerCallback;
 import com.linkedin.venice.pubsub.api.PubSubTopic;
+import com.linkedin.venice.pubsub.api.PubSubTopicPartition;
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import java.util.concurrent.Future;
 
@@ -34,15 +35,13 @@ public class TransformingProducerAdapter implements PubSubProducerAdapter {
 
   @Override
   public Future<PubSubProduceResult> sendMessage(
-      String topic,
-      Integer partition,
+      PubSubTopicPartition topicPartition,
       KafkaKey key,
       KafkaMessageEnvelope value,
       PubSubMessageHeaders headers,
       PubSubProducerCallback callback) {
-    SendMessageParameters parameters = transformer.transform(topic, key, value, partition);
-    return baseProducer
-        .sendMessage(parameters.topic, parameters.partition, parameters.key, parameters.value, headers, callback);
+    SendMessageParameters parameters = transformer.transform(topicPartition, key, value);
+    return baseProducer.sendMessage(parameters.topic, parameters.key, parameters.value, headers, callback);
   }
 
   @Override
@@ -66,20 +65,18 @@ public class TransformingProducerAdapter implements PubSubProducerAdapter {
   }
 
   public static class SendMessageParameters {
-    public final String topic;
+    public final PubSubTopicPartition topic;
     public final KafkaKey key;
     public final KafkaMessageEnvelope value;
-    public final int partition;
 
-    public SendMessageParameters(String topic, KafkaKey key, KafkaMessageEnvelope value, int partition) {
+    public SendMessageParameters(PubSubTopicPartition topic, KafkaKey key, KafkaMessageEnvelope value) {
       this.topic = topic;
       this.key = key;
       this.value = value;
-      this.partition = partition;
     }
   }
 
   public interface SendMessageParametersTransformer {
-    SendMessageParameters transform(String topicName, KafkaKey key, KafkaMessageEnvelope value, int partition);
+    SendMessageParameters transform(PubSubTopicPartition topicName, KafkaKey key, KafkaMessageEnvelope value);
   }
 }

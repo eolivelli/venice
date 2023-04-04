@@ -37,8 +37,7 @@ public interface PubSubProducerAdapter {
   }
 
   Future<PubSubProduceResult> sendMessage(
-      String topic,
-      Integer partition,
+      PubSubTopicPartition topicPartition,
       KafkaKey key,
       KafkaMessageEnvelope value,
       PubSubMessageHeaders headers,
@@ -48,11 +47,11 @@ public interface PubSubProducerAdapter {
 
   void close(int closeTimeOutMs, boolean doFlush);
 
-  default void close(String topic, int closeTimeOutMs, boolean doFlush) {
+  default void close(PubSubTopic topic, int closeTimeOutMs, boolean doFlush) {
     close(closeTimeOutMs, doFlush);
   }
 
-  default void close(String topic, int closeTimeOutMs) {
+  default void close(PubSubTopic topic, int closeTimeOutMs) {
     close(closeTimeOutMs, true);
   }
 

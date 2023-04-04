@@ -8,6 +8,7 @@ import com.linkedin.venice.pubsub.api.PubSubProduceResult;
 import com.linkedin.venice.pubsub.api.PubSubProducerAdapter;
 import com.linkedin.venice.pubsub.api.PubSubProducerCallback;
 import com.linkedin.venice.pubsub.api.PubSubTopic;
+import com.linkedin.venice.pubsub.api.PubSubTopicPartition;
 import com.linkedin.venice.unit.kafka.InMemoryKafkaBroker;
 import com.linkedin.venice.unit.kafka.InMemoryKafkaMessage;
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
@@ -36,14 +37,20 @@ public class MockInMemoryProducerAdapter implements PubSubProducerAdapter {
 
   @Override
   public Future<PubSubProduceResult> sendMessage(
-      String topic,
-      Integer partition,
+      PubSubTopicPartition topicPartition,
       KafkaKey key,
       KafkaMessageEnvelope value,
       PubSubMessageHeaders headers,
       PubSubProducerCallback callback) {
-    long offset = broker.produce(topic, partition, new InMemoryKafkaMessage(key, value));
-    PubSubProduceResult produceResult = new SimplePubSubProduceResultImpl(topic, partition, offset, -1);
+    long offset = broker.produce(
+        topicPartition.getPubSubTopic().getName(),
+        topicPartition.getPartitionNumber(),
+        new InMemoryKafkaMessage(key, value));
+    PubSubProduceResult produceResult = new SimplePubSubProduceResultImpl(
+        topicPartition.getPubSubTopic().getName(),
+        topicPartition.getPartitionNumber(),
+        offset,
+        -1);
     callback.onCompletion(produceResult, null);
     return new Future<PubSubProduceResult>() {
       @Override

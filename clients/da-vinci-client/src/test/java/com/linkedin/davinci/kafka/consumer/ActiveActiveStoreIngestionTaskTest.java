@@ -96,27 +96,23 @@ public class ActiveActiveStoreIngestionTaskTest {
     ArgumentCaptor<KafkaKey> kafkaKeyArgumentCaptor = ArgumentCaptor.forClass(KafkaKey.class);
     ArgumentCaptor<KafkaMessageEnvelope> kmeArgumentCaptor = ArgumentCaptor.forClass(KafkaMessageEnvelope.class);
     when(
-        mockedProducer.sendMessage(
-            eq(testTopic),
-            any(),
-            kafkaKeyArgumentCaptor.capture(),
-            kmeArgumentCaptor.capture(),
-            any(),
-            any())).thenAnswer((Answer<Future<PubSubProduceResult>>) invocation -> {
-              KafkaKey kafkaKey = invocation.getArgument(2);
-              KafkaMessageEnvelope kafkaMessageEnvelope = invocation.getArgument(3);
-              PubSubProducerCallback callback = invocation.getArgument(5);
-              PubSubProduceResult produceResult = mock(PubSubProduceResult.class);
-              offset.addAndGet(1);
-              when(produceResult.getOffset()).thenReturn(offset.get());
-              MessageType messageType = MessageType.valueOf(kafkaMessageEnvelope.messageType);
-              when(produceResult.getSerializedSize()).thenReturn(
-                  kafkaKey.getKeyLength() + (messageType.equals(MessageType.PUT)
-                      ? ((Put) (kafkaMessageEnvelope.payloadUnion)).putValue.remaining()
-                      : 0));
-              callback.onCompletion(produceResult, null);
-              return mockedFuture;
-            });
+        mockedProducer
+            .sendMessage(eq(testTopic), kafkaKeyArgumentCaptor.capture(), kmeArgumentCaptor.capture(), any(), any()))
+                .thenAnswer((Answer<Future<PubSubProduceResult>>) invocation -> {
+                  KafkaKey kafkaKey = invocation.getArgument(2);
+                  KafkaMessageEnvelope kafkaMessageEnvelope = invocation.getArgument(3);
+                  PubSubProducerCallback callback = invocation.getArgument(5);
+                  PubSubProduceResult produceResult = mock(PubSubProduceResult.class);
+                  offset.addAndGet(1);
+                  when(produceResult.getOffset()).thenReturn(offset.get());
+                  MessageType messageType = MessageType.valueOf(kafkaMessageEnvelope.messageType);
+                  when(produceResult.getSerializedSize()).thenReturn(
+                      kafkaKey.getKeyLength() + (messageType.equals(MessageType.PUT)
+                          ? ((Put) (kafkaMessageEnvelope.payloadUnion)).putValue.remaining()
+                          : 0));
+                  callback.onCompletion(produceResult, null);
+                  return mockedFuture;
+                });
     VeniceWriterOptions veniceWriterOptions =
         new VeniceWriterOptions.Builder(testTopic).setPartitioner(new DefaultVenicePartitioner())
             .setTime(SystemTime.INSTANCE)
@@ -164,7 +160,7 @@ public class ActiveActiveStoreIngestionTaskTest {
         beforeProcessingRecordTimestamp);
 
     // Send 1 SOS, 2 Chunks, 1 Manifest.
-    verify(mockedProducer, times(4)).sendMessage(any(), any(), any(), any(), any(), any());
+    verify(mockedProducer, times(4)).sendMessage(any(), any(), any(), any(), any());
     ArgumentCaptor<LeaderProducedRecordContext> leaderProducedRecordContextArgumentCaptor =
         ArgumentCaptor.forClass(LeaderProducedRecordContext.class);
     verify(ingestionTask, times(3)).produceToStoreBufferService(

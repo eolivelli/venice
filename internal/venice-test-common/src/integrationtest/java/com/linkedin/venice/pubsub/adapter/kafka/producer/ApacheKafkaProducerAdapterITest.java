@@ -145,12 +145,11 @@ public class ApacheKafkaProducerAdapterITest {
 
     KafkaKey m0Key = getDummyKey();
     SimpleBlockingCallback m0BlockingCallback = new SimpleBlockingCallback("m0Key");
-    producerAdapter.sendMessage(topicName, null, m0Key, getDummyVal(), null, m0BlockingCallback);
+    producerAdapter.sendMessage(topicName, m0Key, getDummyVal(), null, m0BlockingCallback);
 
     KafkaKey m1Key = getDummyKey();
     PubSubProducerCallbackSimpleImpl m1Cb = new PubSubProducerCallbackSimpleImpl();
-    Future<PubSubProduceResult> m1Future =
-        producerAdapter.sendMessage(topicName, null, m1Key, getDummyVal(), null, m1Cb);
+    Future<PubSubProduceResult> m1Future = producerAdapter.sendMessage(topicName, m1Key, getDummyVal(), null, m1Cb);
 
     // We want to simulate a case where records sit in producer buffer and are not yet sent Kafka.
     // Hence, we will block current thread until producer's sender(ioThread) is blocked.
@@ -172,7 +171,7 @@ public class ApacheKafkaProducerAdapterITest {
     for (int i = 2; i < 100; i++) {
       KafkaKey mKey = getDummyKey();
       PubSubProducerCallbackSimpleImpl callback = new PubSubProducerCallbackSimpleImpl();
-      produceResults.put(callback, producerAdapter.sendMessage(topicName, null, mKey, getDummyVal(), null, callback));
+      produceResults.put(callback, producerAdapter.sendMessage(topicName, mKey, getDummyVal(), null, callback));
     }
 
     // Initiate close in another thread as it close() call waits for ioThread to finish.
@@ -214,7 +213,7 @@ public class ApacheKafkaProducerAdapterITest {
     // completed.
     for (int i = 0; i < 10; i++) {
       try {
-        producerAdapter.sendMessage(topicName, null, getDummyKey(), getDummyVal(), null, null);
+        producerAdapter.sendMessage(topicName, getDummyKey(), getDummyVal(), null, null);
         fail("Sending records after producer has been closed should not succeed");
       } catch (Exception e) {
         // this is expected since producer has been already closed
@@ -299,7 +298,7 @@ public class ApacheKafkaProducerAdapterITest {
       countDownLatch.countDown();
       try {
         // send to non-existent topic
-        producerAdapter.sendMessage("topic", null, getDummyKey(), getDummyVal(), null, null);
+        producerAdapter.sendMessage("topic", getDummyKey(), getDummyVal(), null, null);
         LOGGER.error("Expectations were not met in thread: {}", Thread.currentThread().getName());
         fail("sendMessage on non-existent topic should have blocked the executing thread");
       } catch (VeniceException e) {

@@ -9,6 +9,7 @@ import com.linkedin.venice.pubsub.api.PubSubProduceResult;
 import com.linkedin.venice.pubsub.api.PubSubProducerAdapter;
 import com.linkedin.venice.pubsub.api.PubSubProducerCallback;
 import com.linkedin.venice.pubsub.api.PubSubTopic;
+import com.linkedin.venice.pubsub.api.PubSubTopicPartition;
 import it.unimi.dsi.fastutil.objects.Object2DoubleMap;
 import it.unimi.dsi.fastutil.objects.Object2DoubleMaps;
 import it.unimi.dsi.fastutil.objects.Object2DoubleOpenHashMap;
@@ -63,23 +64,23 @@ public class ApacheKafkaProducerAdapter implements PubSubProducerAdapter {
 
   /**
    * Sends a message to the Kafka Producer. If everything is set up correctly, it will show up in Kafka log.
-   * @param topic - The topic to be sent to.
-   * @param key - The key of the message to be sent.
-   * @param value - The {@link KafkaMessageEnvelope}, which acts as the Kafka value.
+   *
+   * @param topicPartition         - The topic to be sent to.
+   * @param key                    - The key of the message to be sent.
+   * @param value                  - The {@link KafkaMessageEnvelope}, which acts as the Kafka value.
    * @param pubsubProducerCallback - The callback function, which will be triggered when Kafka client sends out the message.
-   * */
+   */
   @Override
   public Future<PubSubProduceResult> sendMessage(
-      String topic,
-      Integer partition,
+      PubSubTopicPartition topicPartition,
       KafkaKey key,
       KafkaMessageEnvelope value,
       PubSubMessageHeaders pubsubMessageHeaders,
       PubSubProducerCallback pubsubProducerCallback) {
     ensureProducerIsNotClosed();
     ProducerRecord<KafkaKey, KafkaMessageEnvelope> record = new ProducerRecord<>(
-        topic,
-        partition,
+        topicPartition.getPubSubTopic().getName(),
+        topicPartition.getPartitionNumber(),
         key,
         value,
         ApacheKafkaUtils.convertToKafkaSpecificHeaders(pubsubMessageHeaders));

@@ -11,6 +11,7 @@ import com.linkedin.venice.kafka.partitionoffset.PartitionOffsetFetcher;
 import com.linkedin.venice.kafka.partitionoffset.PartitionOffsetFetcherFactory;
 import com.linkedin.venice.meta.HybridStoreConfig;
 import com.linkedin.venice.meta.Store;
+import com.linkedin.venice.pubsub.api.PubSubTopic;
 import com.linkedin.venice.utils.ExceptionUtils;
 import com.linkedin.venice.utils.RetryUtils;
 import com.linkedin.venice.utils.Time;
@@ -324,7 +325,7 @@ public class TopicManager implements Closeable {
     return kafkaWriteOnlyAdmin.get().deleteTopic(topicName);
   }
 
-  public int getReplicationFactor(String topicName) {
+  public int getReplicationFactor(PubSubTopic topicName) {
     return partitionsFor(topicName).iterator().next().replicas().length;
   }
 
@@ -777,8 +778,8 @@ public class TopicManager implements Closeable {
    * @param topic
    * @return
    */
-  public List<PartitionInfo> partitionsFor(String topic) {
-    return partitionOffsetFetcher.partitionsFor(topic);
+  public List<PartitionInfo> partitionsFor(PubSubTopic topic) {
+    return partitionOffsetFetcher.partitionsFor(topic.getName());
   }
 
   /**

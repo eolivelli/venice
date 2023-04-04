@@ -2,6 +2,7 @@ package com.linkedin.venice.writer;
 
 import com.linkedin.venice.partitioner.DefaultVenicePartitioner;
 import com.linkedin.venice.partitioner.VenicePartitioner;
+import com.linkedin.venice.pubsub.api.PubSubTopic;
 import com.linkedin.venice.serialization.DefaultSerializer;
 import com.linkedin.venice.serialization.KafkaKeySerializer;
 import com.linkedin.venice.serialization.VeniceKafkaSerializer;
@@ -16,7 +17,7 @@ import java.util.Objects;
  * methods use it to set some configs.
  */
 public class VeniceWriterOptions {
-  private final String topicName;
+  private final PubSubTopic topicName;
   // TODO: Update to use generic serializers
   private final VeniceKafkaSerializer keySerializer;
   private final VeniceKafkaSerializer valueSerializer;
@@ -33,7 +34,7 @@ public class VeniceWriterOptions {
     return brokerAddress;
   }
 
-  public String getTopicName() {
+  public PubSubTopic getTopicName() {
     return topicName;
   }
 
@@ -100,7 +101,7 @@ public class VeniceWriterOptions {
   }
 
   public static class Builder {
-    private final String topicName;
+    private final PubSubTopic topicName;
     private VeniceKafkaSerializer keySerializer = null;
     private VeniceKafkaSerializer valueSerializer = null;
     private VeniceKafkaSerializer writeComputeSerializer = null;
@@ -156,7 +157,7 @@ public class VeniceWriterOptions {
       return this;
     }
 
-    public Builder(String topic) {
+    public Builder(PubSubTopic topic) {
       this.topicName = Objects.requireNonNull(topic, "Topic name cannot be null for VeniceWriterOptions");
     }
 

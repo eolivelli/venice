@@ -9,6 +9,7 @@ import com.linkedin.venice.meta.Store;
 import com.linkedin.venice.meta.StoreConfig;
 import com.linkedin.venice.meta.Version;
 import com.linkedin.venice.meta.ZKStore;
+import com.linkedin.venice.pubsub.PubSubTopicRepository;
 import com.linkedin.venice.pushmonitor.ExecutionStatus;
 import com.linkedin.venice.schema.GeneratedSchemaID;
 import com.linkedin.venice.schema.SchemaEntry;
@@ -66,6 +67,7 @@ public class MetaStoreWriter implements Closeable {
   private final Schema derivedComputeSchema;
   private final HelixReadOnlyZKSharedSchemaRepository zkSharedSchemaRepository;
   private int derivedComputeSchemaId = -1;
+  private final PubSubTopicRepository pubSubTopicRepository = new PubSubTopicRepository();
 
   public MetaStoreWriter(
       TopicManager topicManager,
@@ -381,7 +383,7 @@ public class MetaStoreWriter implements Closeable {
         throw new VeniceException("Realtime topic: " + rtTopic + " doesn't exist or some partitions are not online");
       }
 
-      VeniceWriterOptions options = new VeniceWriterOptions.Builder(rtTopic)
+      VeniceWriterOptions options = new VeniceWriterOptions.Builder(pubSubTopicRepository.getTopic(rtTopic))
           .setKeySerializer(
               new VeniceAvroKafkaSerializer(
                   AvroProtocolDefinition.METADATA_SYSTEM_SCHEMA_STORE_KEY.getCurrentProtocolVersionSchema()))

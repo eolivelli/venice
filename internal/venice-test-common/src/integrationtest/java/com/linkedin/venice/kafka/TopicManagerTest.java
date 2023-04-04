@@ -215,7 +215,7 @@ public class TopicManagerTest {
       controlMessage.debugInfo = Collections.emptyMap();
       recordValue.payloadUnion = controlMessage;
     }
-    producer.sendMessage(topic, null, recordKey, recordValue, null, null).get();
+    producer.sendMessage(topic, recordKey, recordValue, null, null).get();
   }
 
   @Test

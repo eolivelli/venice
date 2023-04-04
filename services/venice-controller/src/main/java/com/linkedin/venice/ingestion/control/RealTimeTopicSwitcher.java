@@ -15,6 +15,8 @@ import com.linkedin.venice.meta.DataReplicationPolicy;
 import com.linkedin.venice.meta.HybridStoreConfig;
 import com.linkedin.venice.meta.Store;
 import com.linkedin.venice.meta.Version;
+import com.linkedin.venice.pubsub.PubSubTopicRepository;
+import com.linkedin.venice.pubsub.api.PubSubTopic;
 import com.linkedin.venice.utils.SystemTime;
 import com.linkedin.venice.utils.Time;
 import com.linkedin.venice.utils.VeniceProperties;
@@ -41,6 +43,7 @@ public class RealTimeTopicSwitcher {
   private static final Logger LOGGER = LogManager.getLogger(RealTimeTopicSwitcher.class);
 
   private final TopicManager topicManager;
+  private final PubSubTopicRepository pubSubTopicRepository = new PubSubTopicRepository();
   private final String destKafkaBootstrapServers;
   private final VeniceWriterFactory veniceWriterFactory;
   private final Time timer;
@@ -73,8 +76,8 @@ public class RealTimeTopicSwitcher {
    * @throws TopicException
    */
   void sendTopicSwitch(
-      String realTimeTopicName,
-      String topicWhereToSendTheTopicSwitch,
+      PubSubTopic realTimeTopicName,
+      PubSubTopic topicWhereToSendTheTopicSwitch,
       long rewindStartTimestamp,
       List<String> remoteKafkaUrls) throws TopicException {
     String errorPrefix = "Cannot send TopicSwitch into '" + topicWhereToSendTheTopicSwitch
@@ -82,10 +85,10 @@ public class RealTimeTopicSwitcher {
     if (realTimeTopicName.equals(topicWhereToSendTheTopicSwitch)) {
       throw new DuplicateTopicException(errorPrefix + " they are the same topic.");
     }
-    if (!getTopicManager().containsTopicAndAllPartitionsAreOnline(realTimeTopicName)) {
+    if (!getTopicManager().containsTopicAndAllPartitionsAreOnline(realTimeTopicName.getName())) {
       throw new TopicDoesNotExistException(errorPrefix + " topic " + realTimeTopicName + " does not exist.");
     }
-    if (!getTopicManager().containsTopicAndAllPartitionsAreOnline(topicWhereToSendTheTopicSwitch)) {
+    if (!getTopicManager().containsTopicAndAllPartitionsAreOnline(topicWhereToSendTheTopicSwitch.getName())) {
       throw new TopicDoesNotExistException(
           errorPrefix + " topic " + topicWhereToSendTheTopicSwitch + " does not exist.");
     }
@@ -115,8 +118,8 @@ public class RealTimeTopicSwitcher {
    * General verification and topic creation for hybrid stores.
    */
   void ensurePreconditions(
-      String srcTopicName,
-      String topicWhereToSendTheTopicSwitch,
+      PubSubTopic srcTopicName,
+      PubSubTopic topicWhereToSendTheTopicSwitch,
       Store store,
       Optional<HybridStoreConfig> hybridStoreConfig) {
     // Carrying on assuming that there needs to be only one and only TopicManager
@@ -138,21 +141,22 @@ public class RealTimeTopicSwitcher {
      *       doesn't have any existing version or a correct storage quota, we cannot decide the partition
      *       number for it.
      */
-    if (!getTopicManager().containsTopicAndAllPartitionsAreOnline(srcTopicName)) {
+    if (!getTopicManager().containsTopicAndAllPartitionsAreOnline(srcTopicName.getName())) {
       int partitionCount;
       Optional<Version> version =
-          store.getVersion(Version.parseVersionFromKafkaTopicName(topicWhereToSendTheTopicSwitch));
+          store.getVersion(Version.parseVersionFromKafkaTopicName(topicWhereToSendTheTopicSwitch.getName()));
       if (version.isPresent()) {
         partitionCount = version.get().getPartitionCount();
       } else {
         partitionCount = store.getPartitionCount();
       }
-      int replicationFactor = Version.isRealTimeTopic(srcTopicName)
+      int replicationFactor = Version.isRealTimeTopic(srcTopicName.getName())
           ? kafkaReplicationFactorForRTTopics
           : getTopicManager().getReplicationFactor(topicWhereToSendTheTopicSwitch);
-      Optional<Integer> minISR = Version.isRealTimeTopic(srcTopicName) ? minSyncReplicasForRTTopics : Optional.empty();
+      Optional<Integer> minISR =
+          Version.isRealTimeTopic(srcTopicName.getName()) ? minSyncReplicasForRTTopics : Optional.empty();
       getTopicManager().createTopic(
-          srcTopicName,
+          srcTopicName.getName(),
           partitionCount,
           replicationFactor,
           TopicManager.getExpectedRetentionTimeInMs(store, hybridStoreConfig.get()),
@@ -163,10 +167,10 @@ public class RealTimeTopicSwitcher {
       /**
        * If real-time topic already exists, check whether its retention time is correct.
        */
-      long topicRetentionTimeInMs = getTopicManager().getTopicRetention(srcTopicName);
+      long topicRetentionTimeInMs = getTopicManager().getTopicRetention(srcTopicName.getName());
       long expectedRetentionTimeMs = TopicManager.getExpectedRetentionTimeInMs(store, hybridStoreConfig.get());
       if (topicRetentionTimeInMs != expectedRetentionTimeMs) {
-        getTopicManager().updateTopicRetention(srcTopicName, expectedRetentionTimeMs);
+        getTopicManager().updateTopicRetention(srcTopicName.getName(), expectedRetentionTimeMs);
       }
     }
   }
@@ -230,7 +234,8 @@ public class RealTimeTopicSwitcher {
     }
     // Write the thing!
     try (VeniceWriter veniceWriter = getVeniceWriterFactory().createVeniceWriter(
-        new VeniceWriterOptions.Builder(Version.composeRealTimeTopic(store.getName())).setTime(getTimer())
+        new VeniceWriterOptions.Builder(pubSubTopicRepository.getTopic(Version.composeRealTimeTopic(store.getName())))
+            .setTime(getTimer())
             .setPartitionCount(previousStoreVersion.getPartitionCount())
             .build())) {
       veniceWriter.broadcastVersionSwap(
@@ -253,15 +258,15 @@ public class RealTimeTopicSwitcher {
   }
 
   public void switchToRealTimeTopic(
-      String realTimeTopicName,
-      String topicWhereToSendTheTopicSwitch,
+      PubSubTopic realTimeTopicName,
+      PubSubTopic topicWhereToSendTheTopicSwitch,
       Store store,
       String aggregateRealTimeSourceKafkaUrl,
       List<String> activeActiveRealTimeSourceKafkaURLs) {
-    if (!Version.isRealTimeTopic(realTimeTopicName)) {
+    if (!Version.isRealTimeTopic(realTimeTopicName.getName())) {
       throw new IllegalArgumentException("The realTimeTopicName param is invalid: " + realTimeTopicName);
     }
-    Version version = store.getVersion(Version.parseVersionFromKafkaTopicName(topicWhereToSendTheTopicSwitch))
+    Version version = store.getVersion(Version.parseVersionFromKafkaTopicName(topicWhereToSendTheTopicSwitch.getName()))
         .orElseThrow(
             () -> new VeniceException(
                 "Corresponding version does not exist for topic: " + topicWhereToSendTheTopicSwitch + " in store: "
@@ -275,8 +280,8 @@ public class RealTimeTopicSwitcher {
     }
     ensurePreconditions(realTimeTopicName, topicWhereToSendTheTopicSwitch, store, hybridStoreConfig);
     long rewindStartTimestamp = getRewindStartTime(version, hybridStoreConfig, version.getCreatedTime());
-    String finalTopicWhereToSendTheTopicSwitch = version.getPushType().isStreamReprocessing()
-        ? Version.composeStreamReprocessingTopic(store.getName(), version.getNumber())
+    PubSubTopic finalTopicWhereToSendTheTopicSwitch = version.getPushType().isStreamReprocessing()
+        ? pubSubTopicRepository.getTopic(Version.composeStreamReprocessingTopic(store.getName(), version.getNumber()))
         : topicWhereToSendTheTopicSwitch;
     List<String> remoteKafkaUrls = new ArrayList<>(Math.max(1, activeActiveRealTimeSourceKafkaURLs.size()));
 
