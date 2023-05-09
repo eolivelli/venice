@@ -1,8 +1,5 @@
 package com.linkedin.venice.authentication.jwt;
 
-import java.util.List;
-
-
 /**
  * Token properties
  * secretKey secret key when using symmetric keys or private key when using asymmetric keys
@@ -20,7 +17,6 @@ public class TokenProperties {
   private final String publicAlg;
   private final String audienceClaim;
   private final String audience;
-  private final List<String> adminRoles;
   private final String jwksHostsAllowlist;
 
   public TokenProperties(
@@ -30,7 +26,6 @@ public class TokenProperties {
       String publicAlg,
       String audienceClaim,
       String audience,
-      List<String> adminRoles,
       String jwksHostsAllowlist) {
     this.secretKey = secretKey;
     this.publicKey = publicKey;
@@ -38,7 +33,6 @@ public class TokenProperties {
     this.publicAlg = publicAlg;
     this.audienceClaim = audienceClaim;
     this.audience = audience;
-    this.adminRoles = adminRoles;
     this.jwksHostsAllowlist = jwksHostsAllowlist;
   }
 
@@ -66,10 +60,6 @@ public class TokenProperties {
     return audience;
   }
 
-  public List<String> getAdminRoles() {
-    return adminRoles;
-  }
-
   public String getJwksHostsAllowlist() {
     return jwksHostsAllowlist;
   }
@@ -78,8 +68,7 @@ public class TokenProperties {
   public String toString() {
     return "TokenProperties{" + "secretKey='" + secretKey + '\'' + ", publicKey='" + publicKey + '\'' + ", authClaim='"
         + authClaim + '\'' + ", publicAlg='" + publicAlg + '\'' + ", audienceClaim='" + audienceClaim + '\''
-        + ", audience='" + audience + '\'' + ", adminRoles=" + adminRoles + ", jwksHostsAllowlist='"
-        + jwksHostsAllowlist + '\'' + '}';
+        + ", audience='" + audience + "', jwksHostsAllowlist='" + jwksHostsAllowlist + '\'' + '}';
   }
 
 }

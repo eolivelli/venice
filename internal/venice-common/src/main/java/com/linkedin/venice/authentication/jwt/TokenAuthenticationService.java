@@ -3,7 +3,6 @@ package com.linkedin.venice.authentication.jwt;
 import com.linkedin.venice.authentication.AuthenticationService;
 import com.linkedin.venice.authorization.Principal;
 import com.linkedin.venice.utils.VeniceProperties;
-import java.util.Collections;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -21,12 +20,11 @@ public class TokenAuthenticationService implements AuthenticationService {
   public void initialise(VeniceProperties veniceProperties) throws Exception {
     TokenProperties tokenProperties = new TokenProperties(
         veniceProperties.getString("authentication.jwt.secretKey", ""),
-        veniceProperties.getString("authentication.jwt.publicKey"),
+        veniceProperties.getString("authentication.jwt.publicKey", ""),
         veniceProperties.getString("authentication.jwt.authClaim", ""),
         veniceProperties.getString("authentication.jwt.publicAlg", ""),
         veniceProperties.getString("authentication.jwt.audienceClaim", ""),
         veniceProperties.getString("authentication.jwt.audience", ""),
-        veniceProperties.getList("authentication.jwt.adminRoles", Collections.emptyList()),
         veniceProperties.getString("authentication.jwt.jwksHostsAllowlist", ""));
     authenticationProvider = new AuthenticationProviderToken(tokenProperties);
   }
@@ -41,6 +39,7 @@ public class TokenAuthenticationService implements AuthenticationService {
     String httpHeaderValue = requestAccessor.getHeader("Authorization");
     String token;
     if (httpHeaderValue == null || httpHeaderValue.length() <= HTTP_HEADER_VALUE_PREFIX.length()) {
+      log.info("No Authorization header found in request: {}", requestAccessor);
       return null;
     } else {
       token = httpHeaderValue.substring(HTTP_HEADER_VALUE_PREFIX.length());
